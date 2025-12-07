@@ -1,21 +1,22 @@
 import axios from "axios";
 
 // ---------------------------------------------------
-// ✅ BASE URL (NO DUPLICATE VARIABLES ANYMORE)
+// BASE URL (remove trailing slash if present)
 // ---------------------------------------------------
 const baseURL =
-  import.meta.env.VITE_API_URL || "https://websiteuu.onrender.com";
+  import.meta.env.VITE_API_URL?.replace(/\/$/, "") ||
+  "https://websiteuu.onrender.com";
 
 // ---------------------------------------------------
-// ✅ AXIOS INSTANCE
+// AXIOS INSTANCE
 // ---------------------------------------------------
 export const api = axios.create({
   baseURL,
-  withCredentials: true, // for cookies / authentication
+  withCredentials: true, // ✅ Send cookies cross-site
 });
 
 // ---------------------------------------------------
-// Optional: Debug Request Interceptor
+// Request interceptor (debugging optional)
 // ---------------------------------------------------
 api.interceptors.request.use(
   (config) => {
@@ -26,7 +27,7 @@ api.interceptors.request.use(
 );
 
 // ---------------------------------------------------
-// Optional: Debug Response Interceptor
+// Response interceptor (debugging optional)
 // ---------------------------------------------------
 api.interceptors.response.use(
   (response) => response,

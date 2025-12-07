@@ -6,8 +6,6 @@ import cookieParser from "cookie-parser";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "./models/User.js";
-import crypto from "crypto";
-import nodemailer from "nodemailer";
 
 dotenv.config();
 
@@ -18,12 +16,13 @@ const PORT = process.env.PORT || 5000;
 // ✅ ALLOWED ORIGINS (FINAL FIXED VERSION)
 // ========================================================
 const allowedOrigins = [
-  "https://website-cg7y.vercel.app", // Frontend (Vercel)
-  "https://websiteuu.onrender.com", // Backend (Render)
+  "https://website-cg7y.vercel.app",
+  "https://website-cg7y.vercel.app/",
+  "https://websiteuu.onrender.com",
 ];
 
 // ========================================================
-// ✅ TRUST PROXY (required for Render HTTPS)
+// ✅ TRUST PROXY (Render HTTPS handling)
 // ========================================================
 app.set("trust proxy", 1);
 
@@ -33,13 +32,13 @@ app.set("trust proxy", 1);
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // Allow Postman, mobile apps, etc.
+      if (!origin) return callback(null, true); // Postman, mobile, curl
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      console.log("❌ CORS BLOCKED ORIGIN:", origin);
+      console.log("❌ BLOCKED ORIGIN:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
@@ -47,6 +46,11 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+// ========================================================
+// ✅ OPTIONS FIX FOR PREFLIGHT
+// ========================================================
+app.options("*", cors());
 
 // ========================================================
 // Middleware
@@ -71,14 +75,9 @@ async function connectDb() {
 // Utility: secure cookie checker
 // ========================================================
 function isSecure(req) {
-  const forwardedProto = String(
-    req.headers["x-forwarded-proto"] || ""
-  ).toLowerCase();
+  const proto = (req.headers["x-forwarded-proto"] || "").toLowerCase();
   return (
-    req.secure ||
-    forwardedProto === "https" ||
-    req.headers["x-forwarded-ssl"] === "on" ||
-    process.env.NODE_ENV === "production"
+    req.secure || proto === "https" || process.env.NODE_ENV === "production"
   );
 }
 
@@ -86,17 +85,15 @@ function isSecure(req) {
 // Utility: set auth cookie
 // ========================================================
 function setAuthCookie(req, res, token) {
-  const prod = isSecure(req);
+  const prod = req.secure || req.headers["x-forwarded-proto"] === "https";
 
-  const cookieOptions = {
+  res.cookie("token", token, {
     httpOnly: true,
-    sameSite: prod ? "none" : "lax",
-    secure: prod,
+    sameSite: prod ? "none" : "lax", // cross-site in prod
+    secure: prod, // only send over HTTPS in prod
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     path: "/",
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  };
-
-  res.cookie("token", token, cookieOptions);
+  });
 }
 
 // ========================================================
@@ -156,9 +153,7 @@ app.post("/api/auth/login", async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password)
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password required" });
 
     const user = await User.findOne({ email });
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
@@ -192,7 +187,6 @@ app.get("/api/auth/me", async (req, res) => {
     const token = req.cookies?.token;
 
     if (!token) {
-      console.log("⚠️ No auth cookie received");
       return res.status(401).json({ message: "Unauthorized" });
     }
 
