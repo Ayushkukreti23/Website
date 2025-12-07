@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
+import nodemailer from "nodemailer";
 import User from "./models/User.js";
 
 dotenv.config();
@@ -196,6 +197,29 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+async function sendResetEmail(to, token) {
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, EMAIL_FROM } =
+    process.env;
+  const portNum = Number(SMTP_PORT || 0);
+  if (!SMTP_HOST || !portNum || !SMTP_USER || !SMTP_PASS) return false;
+  const transport = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: portNum,
+    secure: portNum === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+  const from = EMAIL_FROM || SMTP_USER;
+  const html = `<p>Your password reset code is <b>${token}</b>. It expires in 15 minutes.</p>`;
+  await transport.sendMail({
+    from,
+    to,
+    subject: "Password reset code",
+    text: `Your code: ${token}`,
+    html,
+  });
+  return true;
+}
+
 app.post("/api/auth/forgot", async (req, res) => {
   try {
     const { email } = req.body;
@@ -206,7 +230,13 @@ app.post("/api/auth/forgot", async (req, res) => {
     user.resetToken = token;
     user.resetTokenExp = new Date(Date.now() + 15 * 60 * 1000);
     await user.save();
-    res.json({ token });
+    let sent = false;
+    try {
+      sent = await sendResetEmail(email, token);
+    } catch {
+      sent = false;
+    }
+    res.json({ token, sent });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
