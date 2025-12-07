@@ -5,6 +5,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import User from "./models/User.js";
 
 dotenv.config();
@@ -191,6 +192,49 @@ app.post("/api/auth/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Login error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post("/api/auth/forgot", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const token = String(crypto.randomInt(100000, 999999));
+    user.resetToken = token;
+    user.resetTokenExp = new Date(Date.now() + 15 * 60 * 1000);
+    await user.save();
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post("/api/auth/reset", async (req, res) => {
+  try {
+    const { email, token, password } = req.body;
+    if (!email || !token || !password)
+      return res.status(400).json({ message: "All fields are required" });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const now = new Date();
+    if (
+      !user.resetToken ||
+      !user.resetTokenExp ||
+      user.resetToken !== token ||
+      user.resetTokenExp < now
+    ) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    user.password = hash;
+    user.resetToken = undefined;
+    user.resetTokenExp = undefined;
+    await user.save();
+    res.json({ message: "Password reset successful" });
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 });
