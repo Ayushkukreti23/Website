@@ -5,8 +5,9 @@ export const baseURL =
   import.meta.env.VITE_API_URL || "https://websiteuu.onrender.com";
 
 // Create axios instance
+const baseURL = "https://websiteuu.onrender.com";
 export const api = axios.create({
-  baseURL,
+  baseURL: "https://websiteuu.onrender.com",
   withCredentials: true, // required if backend uses cookies/auth
 });
 
@@ -29,7 +30,9 @@ api.interceptors.response.use(
   (error) => {
     // Log detailed error info for debugging Chrome cookie issues
     if (error.response?.status === 401) {
-      console.warn("401 Unauthorized - Cookie may not be set or sent correctly");
+      console.warn(
+        "401 Unauthorized - Cookie may not be set or sent correctly"
+      );
       console.warn("Request URL:", error.config?.url);
       console.warn("Request Headers:", error.config?.headers);
     }
