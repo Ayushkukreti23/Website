@@ -12,14 +12,45 @@ const baseURL =
 // ---------------------------------------------------
 export const api = axios.create({
   baseURL,
-  withCredentials: true, // ✅ Send cookies cross-site
+  withCredentials: true,
 });
+
+const TOKEN_KEY = "auth_token";
+
+export function getToken() {
+  try {
+    return localStorage.getItem(TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+export function setToken(t) {
+  try {
+    if (t) localStorage.setItem(TOKEN_KEY, t);
+  } catch {
+    return;
+  }
+}
+
+export function clearToken() {
+  try {
+    localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    return;
+  }
+}
 
 // ---------------------------------------------------
 // Request interceptor (debugging optional)
 // ---------------------------------------------------
 api.interceptors.request.use(
   (config) => {
+    const token = getToken();
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     console.log("API Request:", config.method?.toUpperCase(), config.url);
     return config;
   },

@@ -19,6 +19,11 @@ const allowedOrigins = [
   "https://website-cg7y.vercel.app",
   "https://website-cg7y.vercel.app/",
   "https://websiteuu.onrender.com",
+  "https://vercel.app",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
 ];
 
 // ========================================================
@@ -32,18 +37,27 @@ app.set("trust proxy", 1);
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true); // Postman, mobile, curl
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
+      if (!origin) return callback(null, true);
+      const ok = allowedOrigins.some((a) => {
+        try {
+          const o = new URL(origin);
+          const au = new URL(a);
+          return (
+            o.origin === au.origin ||
+            o.hostname === au.hostname ||
+            o.hostname.endsWith("." + au.hostname)
+          );
+        } catch {
+          return false;
+        }
+      });
+      if (ok) return callback(null, true);
       console.log("❌ BLOCKED ORIGIN:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
   })
 );
 
@@ -138,6 +152,7 @@ app.post("/api/auth/signup", async (req, res) => {
       lastName: user.lastName,
       email: user.email,
       mobile: user.mobile,
+      token,
     });
   } catch (err) {
     console.error("Signup error:", err.message);
@@ -172,6 +187,7 @@ app.post("/api/auth/login", async (req, res) => {
       name: user.name,
       lastName: user.lastName,
       email: user.email,
+      token,
     });
   } catch (err) {
     console.error("Login error:", err.message);
@@ -184,11 +200,13 @@ app.post("/api/auth/login", async (req, res) => {
 // ========================================================
 app.get("/api/auth/me", async (req, res) => {
   try {
-    const token = req.cookies?.token;
-
+    let token = req.cookies?.token;
     if (!token) {
-      return res.status(401).json({ message: "Unauthorized" });
+      const auth = req.headers?.authorization || "";
+      const parts = auth.split(" ");
+      if (parts[0] === "Bearer" && parts[1]) token = parts[1];
     }
+    if (!token) return res.status(401).json({ message: "Unauthorized" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

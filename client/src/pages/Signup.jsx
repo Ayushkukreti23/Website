@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { signup } from "../lib/api";
+import { signup, setToken } from "../lib/api";
 
 export default function Signup() {
   const nav = useNavigate();
@@ -25,7 +25,8 @@ export default function Signup() {
     }
     setLoading(true);
     try {
-      await signup({ name, lastName, mobile, email, password });
+      const data = await signup({ name, lastName, mobile, email, password });
+      if (data?.token) setToken(data.token);
       nav("/dashboard");
     } catch (err) {
       setError(

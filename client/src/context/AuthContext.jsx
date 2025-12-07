@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { me, logout } from "../lib/api";
+import { me, logout, clearToken } from "../lib/api";
 import { AuthContext } from "./auth";
 
 export function AuthProvider({ children }) {
@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
 
   async function logoutUser() {
     await logout();
+    clearToken();
     setUser(null);
   }
 
