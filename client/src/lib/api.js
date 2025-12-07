@@ -1,46 +1,49 @@
 import axios from "axios";
 
-// Use environment variable if defined, otherwise fallback to localhost
-export const baseURL =
+// ---------------------------------------------------
+// ✅ BASE URL (NO DUPLICATE VARIABLES ANYMORE)
+// ---------------------------------------------------
+const baseURL =
   import.meta.env.VITE_API_URL || "https://websiteuu.onrender.com";
 
-// Create axios instance
-const baseURL = "https://websiteuu.onrender.com";
+// ---------------------------------------------------
+// ✅ AXIOS INSTANCE
+// ---------------------------------------------------
 export const api = axios.create({
-  baseURL: "https://websiteuu.onrender.com",
-  withCredentials: true, // required if backend uses cookies/auth
+  baseURL,
+  withCredentials: true, // for cookies / authentication
 });
 
-// Add request interceptor for debugging (can be removed in production)
+// ---------------------------------------------------
+// Optional: Debug Request Interceptor
+// ---------------------------------------------------
 api.interceptors.request.use(
   (config) => {
     console.log("API Request:", config.method?.toUpperCase(), config.url);
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add response interceptor for debugging
+// ---------------------------------------------------
+// Optional: Debug Response Interceptor
+// ---------------------------------------------------
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Log detailed error info for debugging Chrome cookie issues
     if (error.response?.status === 401) {
       console.warn(
-        "401 Unauthorized - Cookie may not be set or sent correctly"
+        "401 Unauthorized – Cookie may not be set or sent correctly"
       );
       console.warn("Request URL:", error.config?.url);
-      console.warn("Request Headers:", error.config?.headers);
     }
     return Promise.reject(error);
   }
 );
 
-// ---------------------- API FUNCTIONS ----------------------
+// ---------------------------------------------------
+// API FUNCTIONS
+// ---------------------------------------------------
 
 // Signup user
 export async function signup(payload) {
